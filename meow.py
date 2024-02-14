@@ -1,8 +1,9 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QFileDialog, QVBoxLayout, QSizePolicy, QGridLayout
+from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QFileDialog, QVBoxLayout, QComboBox
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from pandas import ExcelFile
+from components.matplot import MatplotlibWidget
 
 class ExcelReaderApp(QWidget):
     def __init__(self):
@@ -11,40 +12,33 @@ class ExcelReaderApp(QWidget):
         self.setWindowTitle("Excel Reader")
         self.setGeometry(0, 0, 800, 600)
 
+        self.layout = QVBoxLayout()
 
-        self.layout = QGridLayout()
+        # Add QComboBox to display header_list
+        self.header_combobox = QComboBox()
+        self.header_combobox.currentIndexChanged.connect(self.pick_combo)
+        self.layout.addWidget(self.header_combobox)
 
-        # Info tab layout
-        self.info_layout = QVBoxLayout()
-        self.label_filename = QLabel("No file selected")
-        self.info_layout.addWidget(self.label_filename)
+        self.graph_options = ["Bar", "Pie", "Line"]
+        self.graph_combobox = QComboBox()
+        self.graph_combobox.addItems(self.graph_options)
+        self.graph_combobox.currentIndexChanged.connect(self.pick_graph)
+        self.layout.addWidget(self.graph_combobox)
 
         # Bar chart layout
         self.chart_widget = MatplotlibWidget()
-        self.chart_layout = QVBoxLayout()
-        self.chart_layout.addWidget(self.chart_widget)
-
-        # Column data layout
-        self.column_data_widget = QLabel("Column Data")
-        self.column_data_layout = QVBoxLayout()
-        self.column_data_layout.addWidget(self.column_data_widget)
-
-        # Empty layout
-        self.empty_widget = QWidget()
-        self.empty_layout = QVBoxLayout()
-        self.empty_layout.addWidget(self.empty_widget)
+        self.layout.addWidget(self.chart_widget)
 
         # Open file button
         self.button = QPushButton("Open file")
         self.button.clicked.connect(self.open_file)
+        self.layout.addWidget(self.button)
 
-        # Add widgets to the main layout
-        self.layout.addLayout(self.info_layout, 0, 0)
-        self.layout.addLayout(self.chart_layout, 0, 1)
-        self.layout.addLayout(self.column_data_layout, 1, 0)
-        self.layout.addLayout(self.empty_layout, 1, 1)
-        self.layout.addWidget(self.button, 2, 0, 1, 2)  # Stretch button over two columns
-
+        self.option = ""
+        self.data = None
+        self.original_data = None
+        self.graph_option = "Bar"
+    
         self.setLayout(self.layout)
         self.showMaximized()
 
@@ -53,34 +47,35 @@ class ExcelReaderApp(QWidget):
 
         if path:
             header_list, file = read_excel_file(path)
-            self.update_info_tab(path)
+            self.original_data = file.copy()
             self.update_chart_tab(file['Gender'])
-            # self.update_column_data_tab(header_list)
+            self.update_info_tab(header_list)
+            self.data = file
 
-    def update_info_tab(self, filename):
-        self.label_filename.setText(f"File: {filename}")
+    def update_info_tab(self, header_list):
+        self.header_combobox.clear()
+        self.header_combobox.addItems(header_list)
+        self.option = header_list[0]
 
     def update_chart_tab(self, gender_column):
-        self.chart_widget.update_chart(gender_column)
+        if self.graph_option == "Bar":
+            self.chart_widget.plot_bar(gender_column)
+        elif self.graph_option == "Pie":
+            self.chart_widget.plot_pie(gender_column)
+        elif self.graph_option == "Line":
+            self.chart_widget.plot_line(self.original_data[self.option])
 
-    def update_column_data_tab(self, header_list):
-        self.column_data_widget.setText(str(header_list))
+    def pick_combo(self, index):
+        if self.data is None:
+            return
+        self.option = self.header_combobox.itemText(index)
+        self.update_chart_tab(self.data[self.option])
 
-
-class MatplotlibWidget(FigureCanvas):
-    def __init__(self):
-        self.fig = Figure(figsize=(5, 6), dpi=100)
-        self.ax = self.fig.add_subplot(111)
-        # self.ax.set_position([0.1, 0.1, 0.8, 0.8])
-        super().__init__(self.fig)
-        
-
-    def update_chart(self, data):
-        self.ax.clear()
-        counts = data.value_counts()
-        counts.plot(kind='bar', ax=self.ax)
-        self.draw()
-
+    def pick_graph(self, index):
+        if self.data is None:
+            return
+        self.graph_option = self.graph_combobox.itemText(index)
+        self.update_chart_tab(self.data[self.option])
 
 def read_excel_file(path):
     df = ExcelFile(path)
