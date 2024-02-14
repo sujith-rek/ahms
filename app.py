@@ -14,6 +14,12 @@ class ExcelReaderApp(QWidget):
 
         self.layout = QGridLayout()
 
+        self.option = ""
+        self.data = None
+        self.graph_option = "Bar"
+        self.ef = None
+        self.sheet = 0
+        
         # Info tab layout
         self.info_layout = QVBoxLayout()
         self.label_filename = QLabel("No file selected")
@@ -63,12 +69,6 @@ class ExcelReaderApp(QWidget):
         self.layout.addLayout(self.empty_layout, 1, 1)
         self.layout.addWidget(self.button, 2, 0, 1, 2)  # Stretch button over two columns
 
-        self.option = ""
-        self.data = None
-        self.graph_option = "Bar"
-        self.ef = None
-        self.sheet = 0
-    
 
         self.setLayout(self.layout)
         self.showMaximized()
@@ -83,10 +83,13 @@ class ExcelReaderApp(QWidget):
             self.data = file
 
     def update_info_tab(self, header_list):
-        # print(header_list)
         self.header_combobox.clear()
         self.header_combobox.addItems(header_list)
         self.option = header_list[0]
+    
+    def seondary_info_tab_update(self, header_list):
+        self.header_combobox.clear()
+        self.header_combobox.addItems(header_list)
 
     def determine_data_type(self, data):
         # check if numbers or strings
@@ -120,12 +123,10 @@ class ExcelReaderApp(QWidget):
         if self.data is None:
             return
 
-        # print(self.option,"option before pick_combo")
-        # print all the options in the header_combobox
         self.option = self.header_combobox.itemText(index)
         if self.option == "":
             return
-        # print(self.option,"option after pick_combo")
+        
         self.update_chart_tab(self.data[self.option])
 
     def pick_graph(self, index):
@@ -152,7 +153,7 @@ class ExcelReaderApp(QWidget):
         file = self.ef.parse(self.ef.sheet_names[index], skiprows=1)
         header_list = file.columns.tolist()
         self.data = file
-        self.update_info_tab(header_list)
+        self.seondary_info_tab_update(header_list)
         self.update_chart_tab(file[self.option])
 
         
