@@ -1,0 +1,6 @@
+pyqt6
+openpyxl
+pandas
+matplotlib
+qtpy
+pyarrow
